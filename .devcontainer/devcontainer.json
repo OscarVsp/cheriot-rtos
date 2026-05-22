@@ -3,20 +3,31 @@
   "remoteUser": "cheriot",
   "containerUser": "cheriot",
   "onCreateCommand": "git config --global --add safe.directory /workspaces/cheriot-rtos && git submodule update --init --recursive && ./scripts/generate_compile_commands.sh",
+  "features": {
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+      "packages": "picocom"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
           "llvm-vs-code-extensions.vscode-clangd",
           "tboox.xmake-vscode",
-          "hnw.vscode-auto-open-markdown-preview"
+          "hnw.vscode-auto-open-markdown-preview",
+          "mhutchie.git-graph"
       ],
       "settings": {
         "clangd.path": "/cheriot-tools/bin/clangd",
         "xmake.compileCommandsDirectory": "${workspaceRoot}",
         "xmake.workingDirectory": "${workspaceRoot}/tests",
-        "xmake.additionalConfigArguments": "--sdk=/cheriot-tools/"
+        "xmake.additionalConfigArguments": ["--sdk=/cheriot-tools/","--board=sonata"]
       }
     }
-  }
+  },
+  "mounts": [
+    "source=/media/oscar/SONATA,target=/mnt/SONATA,type=bind"
+  ],
+  "runArgs": ["--privileged"],
+  "postCreateCommand": "sudo chmod a+rw /dev/ttyUSB2"
 }
 
