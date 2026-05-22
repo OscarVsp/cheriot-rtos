@@ -79,6 +79,12 @@ option("board-mixins")
 	set_showmenu(true)
 	set_category("board")
 
+option("tickrate-hz")
+	set_default(nil)
+	set_description("Override the board's tickrate_hz (scheduler ticks per second)")
+	set_showmenu(true)
+	set_category("board")
+
 option("allocator")
 	set_description("Build with the shared heap allocator compartment")
 	set_default(true)
@@ -844,6 +850,12 @@ rule("cheriot.board.targets.conf")
 		local board = board_config.info
 		local function path_subst(p)
 			return p:gsub("${(%w*)}", board_config.path_substitutes)
+		end
+
+		-- Override tickrate_hz if specified
+		local tickrate_override = get_config("tickrate-hz")
+		if tickrate_override then
+			board.tickrate_hz = tickrate_override
 		end
 
 		if board.revoker then
