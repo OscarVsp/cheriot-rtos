@@ -12,7 +12,7 @@ includes(path.join(sdkdir, "lib/freestanding"),
          path.join(sdkdir, "lib/crt"))
 
 option("board")
-    set_default("sail")
+    set_default("sonata")
 
 option("stressors")
     set_default(false)
@@ -81,7 +81,7 @@ firmware("cyclictest-benchmark")
         if get_config("stressors") then
             table.insert(threads, {
                 compartment = "stressors",
-                priority = 1,
+                priority = 0,
                 entry_point = "entry_stressor",
                 stack_size = 0x800,
                 trusted_stack_frames = 4

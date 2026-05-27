@@ -36,27 +36,6 @@ firmware("interrupt-benchmark")
             },
             {
                 compartment = "interrupt_bench",
-                priority = 2,
-                entry_point = "entry_high_priority",
-                stack_size = 0x800,
-                trusted_stack_frames = 4
-            },
-            {
-                compartment = "interrupt_bench",
-                priority = 2,
-                entry_point = "entry_high_priority",
-                stack_size = 0x400,
-                trusted_stack_frames = 4
-            },
-            {
-                compartment = "interrupt_bench",
-                priority = 2,
-                entry_point = "entry_high_priority",
-                stack_size = 0x200,
-                trusted_stack_frames = 4
-            },
-            {
-                compartment = "interrupt_bench",
                 priority = 1,
                 entry_point = "entry_low_priority",
                 stack_size = 0x100,

@@ -12,7 +12,7 @@ includes(path.join(sdkdir, "lib/freestanding"),
          path.join(sdkdir, "lib/crt"))
 
 option("board")
-    set_default("sail")
+    set_default("sonata")
 
 debugOption("uart-test");
 compartment("uart-test")

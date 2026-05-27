@@ -20,12 +20,12 @@
         "clangd.path": "/cheriot-tools/bin/clangd",
         "xmake.compileCommandsDirectory": "${workspaceRoot}",
         "xmake.workingDirectory": "${workspaceRoot}/tests",
-        "xmake.additionalConfigArguments": ["--sdk=/cheriot-tools/","--board=sonata"]
+        "xmake.additionalConfigArguments": "--sdk=/cheriot-tools/"
       }
     }
   },
   "mounts": [
-    "source=/media/oscar/SONATA,target=/mnt/SONATA,type=bind"
+    "source=/mnt/SONATA,target=/mnt/SONATA,type=bind"
   ],
   "runArgs": ["--privileged"],
   "postCreateCommand": "sudo chmod a+rw /dev/ttyUSB2"

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Task Scheduler Simulator</title>
+<style>
+:root{
+  --bg0:#111110;--bg1:#1a1a18;--bg2:#1e1e1c;--bg3:#2c2c2a;
+  --border:#3a3a38;--border2:#4a4a48;
+  --text1:#e8e6e0;--text2:#a8a69e;--text3:#6e6c66;
+  --blue:#378ADD;--red:#E24B4A;--amber:#EF9F27;--green:#1D9E75;--purple:#9F77DD;
+  --warn-bg:#2a1f08;--warn-col:#EF9F27;
+  --danger-bg:#2a0f0f;--danger-col:#E24B4A;
+  --radius:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg0);color:var(--text1);font-family:system-ui,sans-serif;font-size:13px;padding:16px;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+.tab-bar{display:flex;border-bottom:0.5px solid var(--border);margin-bottom:14px;}
+.tab-btn{padding:7px 18px;font-size:12px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;margin-bottom:-1px;}
+.tab-btn.active{color:var(--text1);border-bottom-color:var(--blue);font-weight:500;}
+.tab-btn:hover{color:var(--text1);}
+.page{display:none;}
+.page.active{display:block;}
+.shared-bar{background:var(--bg2);border-radius:var(--radius);padding:8px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;}
+.shared-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;}
+.shared-label{font-size:10px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
+.sec-title{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+.ctrl{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.ctrl label{font-size:12px;color:var(--text2);min-width:120px;}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;border-radius:2px;background:var(--bg3);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;}
+input[type=number].num-in{
+  background:var(--bg3);border:0.5px solid var(--border2);border-radius:4px;
+  color:var(--text1);font-size:12px;font-weight:500;padding:2px 5px;
+  width:68px;outline:none;-moz-appearance:textfield;
+}
+input[type=number].num-in::-webkit-outer-spin-button,
+input[type=number].num-in::-webkit-inner-spin-button{-webkit-appearance:none;}
+input[type=number].num-in:focus{border-color:var(--blue);}
+input[type=number].num-in.invalid{border-color:var(--red);}
+.num-wrap{display:flex;flex-direction:column;gap:2px;min-width:74px;}
+.num-wrap .time{font-size:10px;color:var(--text3);}
+.rmode,.seg-btn{display:flex;border:0.5px solid var(--border2);border-radius:var(--radius);overflow:hidden;}
+.rmode button,.seg-btn button{flex:1;padding:5px 8px;font-size:11px;background:transparent;border:none;border-right:0.5px solid var(--border2);color:var(--text2);cursor:pointer;}
+.rmode button:last-child,.seg-btn button:last-child{border-right:none;}
+.rmode button.active,.seg-btn button.active{background:var(--bg3);color:var(--text1);font-weight:500;}
+.tog{position:relative;width:32px;height:18px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-slider{position:absolute;inset:0;border-radius:20px;background:var(--border2);cursor:pointer;transition:background .2s;}
+.tog input:checked+.tog-slider{background:var(--blue);}
+.tog-slider:before{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;border-radius:50%;background:#fff;transition:transform .2s;}
+.tog input:checked+.tog-slider:before{transform:translateX(14px);}
+.warn-el{border-radius:var(--radius);padding:6px 12px;font-size:11px;margin-bottom:6px;display:none;line-height:1.5;}
+.warn-danger{background:var(--danger-bg);color:var(--danger-col);}
+.warn-warn{background:var(--warn-bg);color:var(--warn-col);}
+.stat{background:var(--bg2);border-radius:var(--radius);padding:8px 10px;text-align:center;}
+.stat .val{font-size:15px;font-weight:500;color:var(--text1);}
+.stat .lbl{font-size:10px;color:var(--text3);margin-top:2px;}
+#sweepStatus{font-size:11px;color:var(--text2);margin-bottom:4px;min-height:14px;}
+.freq-badge{display:flex;align-items:center;gap:6px;background:var(--bg3);border-radius:6px;padding:4px 10px;flex-shrink:0;}
+.freq-badge .freq-val{font-size:12px;font-weight:600;color:var(--text1);}
+.freq-badge .freq-lbl{font-size:10px;color:var(--text3);}
+.ctrl-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;}
+.ctrl-row .ctrl{margin-bottom:0;}
+.zoom-hint{font-size:10px;color:var(--text3);margin-top:3px;}
+/* noise unit label pill */
+.unit-pill{font-size:10px;color:var(--text3);background:var(--bg3);border-radius:4px;padding:2px 5px;white-space:nowrap;}
+</style>
+</head>
+<body>
+<h2 class="sr-only">Task scheduler simulator</h2>
+
+<div class="tab-bar">
+  <button class="tab-btn active" data-page="sim">Simulation</button>
+  <button class="tab-btn" data-page="sweep">Interval sweep</button>
+</div>
+
+<!-- SHARED BAR -->
+<div class="shared-bar">
+  <!-- Row 1: freq + main params -->
+  <div class="shared-row">
+    <span class="shared-label">Shared</span>
+    <div class="freq-badge">
+      <span class="freq-val">40 MHz</span>
+      <span class="freq-lbl">CPU freq</span>
+    </div>
+    <div class="ctrl" style="margin:0;flex:1;min-width:180px;">
+      <label>Task duration</label>
+      <input type="range" id="sX" min="0" max="10000" step="100" value="100">
+      <div class="num-wrap">
+        <input type="number" class="num-in" id="nX" value="100" min="0" max="10000" step="100">
+        <span class="time" id="oXt">2.5 µs</span>
+      </div>
+    </div>
+    <div class="ctrl" style="margin:0;flex:1;min-width:180px;">
+      <label>Tick size</label>
+      <input type="range" id="sT" min="1000" max="200000" step="1000" value="40000">
+      <div class="num-wrap">
+        <input type="number" class="num-in" id="nT" value="40000" min="1000" max="200000" step="1000">
+        <span class="time" id="oTt">1 ms</span>
+      </div>
+    </div>
+  </div>
+  <!-- Row 2: rounding + skip + noise -->
+  <div class="shared-row">
+    <span class="shared-label" style="min-width:44px;">Options</span>
+    <div class="rmode" id="rmodeGroup">
+      <button class="active" data-mode="nearest">Nearest</button>
+      <button data-mode="ceil">Up</button>
+      <button data-mode="floor">Down</button>
+    </div>
+    <label class="tog" style="margin-left:6px;"><input type="checkbox" id="tSkip"><span class="tog-slider"></span></label>
+    <span style="font-size:11px;color:var(--text3);" id="skipDesc">skip: off</span>
+    <span style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 4px;"></span>
+    <!-- Noise toggle + amplitude slider + mode selector + dist selector -->
+    <label class="tog"><input type="checkbox" id="tNoise"><span class="tog-slider"></span></label>
+    <span style="font-size:11px;color:var(--text3);flex-shrink:0;">sleep noise</span>
+    <!-- abs/rel mode -->
+    <div class="seg-btn" id="noiseModeGroup" style="flex-shrink:0;">
+      <button class="active" data-nmode="abs">abs</button>
+      <button data-nmode="rel">rel%</button>
+    </div>
+    <!-- amplitude -->
+    <div class="ctrl" style="margin:0;flex:1;min-width:140px;max-width:280px;">
+      <input type="range" id="sNoise" min="0" max="500000" step="1000" value="0">
+      <div class="num-wrap" style="min-width:78px;">
+        <input type="number" class="num-in" id="nNoise" value="0" min="0" max="500000" step="1000" style="width:72px;">
+        <span class="time" id="oNoiset">0 µs</span>
+      </div>
+    </div>
+    <!-- distribution shape -->
+    <div class="seg-btn" id="noiseDistGroup" style="flex-shrink:0;">
+      <button class="active" data-dist="uniform" title="Uniform distribution ±amp">unif</button>
+      <button data-dist="normal" title="Normal distribution σ=amp/3">norm</button>
+    </div>
+    <span class="unit-pill" id="noisePill">± cycles</span>
+  </div>
+</div>
+
+<!-- PAGE SIM -->
+<div class="page active" id="page-sim">
+  <div style="margin-bottom:14px;">
+    <p class="sec-title">Simulation</p>
+    <div class="ctrl-row">
+      <div class="ctrl">
+        <label>Interval</label>
+        <input type="range" id="sI" min="1000" max="200000" step="1000" value="50000">
+        <div class="num-wrap">
+          <input type="number" class="num-in" id="nI" value="50000" min="1000" max="200000" step="1000">
+          <span class="time" id="oIt">1.25 ms</span>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>Preview length</label>
+        <input type="range" id="sN" min="4" max="100" step="1" value="10">
+        <div class="num-wrap" style="min-width:50px;">
+          <input type="number" class="num-in" id="nN" value="10" min="4" max="100" step="1" style="width:50px;">
+        </div>
+      </div>
+    </div>
+    <div id="warnPast" class="warn-el warn-danger"><span id="warnPastTxt"></span></div>
+    <div id="warnZeroSleep" class="warn-el warn-warn"><span id="warnZeroSleepTxt"></span></div>
+  </div>
+  <div style="margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <p class="sec-title" style="margin:0;">Timeline</p>
+      <div style="display:flex;gap:10px;font-size:10px;color:var(--text3);">
+        <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:2px;background:var(--text3);"></span>expected</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:8px;background:var(--blue);border-radius:2px;"></span>task</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:2px;opacity:.8"></span>late</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:8px;background:var(--amber);border-radius:2px;opacity:.8"></span>early</span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:2px;opacity:.8"></span>no-sleep</span>
+        <span style="display:flex;align-items:center;gap:3px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;overflow:hidden;position:relative;flex-shrink:0;">
+            <span style="position:absolute;inset:0;background:var(--red);clip-path:polygon(0 0,100% 0,0 100%);opacity:.9;"></span>
+            <span style="position:absolute;inset:0;background:var(--green);clip-path:polygon(100% 0,100% 100%,0 100%);opacity:.9;"></span>
+          </span>
+          late+no-sleep
+        </span>
+        <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:8px;height:8px;background:var(--text3);border-radius:2px;opacity:.5;"></span>skipped</span>
+      </div>
+    </div>
+    <svg id="timeline" width="100%" style="display:block;overflow:visible;"></svg>
+  </div>
+  <div style="margin-bottom:14px;">
+    <p class="sec-title">Long-run — 10 000 iterations</p>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;">
+      <div class="stat"><div class="val" id="stMean">—</div><div class="lbl">Abs. mean</div></div>
+      <div class="stat"><div class="val" id="stMax">—</div><div class="lbl">Max error</div></div>
+      <div class="stat"><div class="val" id="stP95">—</div><div class="lbl">95th pct</div></div>
+      <div class="stat"><div class="val" id="stFwd">—</div><div class="lbl">% forwarded</div></div>
+      <div class="stat"><div class="val" id="stZeroSleep">—</div><div class="lbl">% no-sleep</div></div>
+      <div class="stat"><div class="val" id="stSkip">—</div><div class="lbl">% skipped</div></div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <p class="sec-title">Error distribution</p>
+      <div style="position:relative;width:100%;height:160px;"><canvas id="chartDist" role="img" aria-label="Histogram of absolute timing errors"></canvas></div>
+    </div>
+    <div>
+      <p class="sec-title">Signed error — first 200 iterations</p>
+      <div style="position:relative;width:100%;height:160px;"><canvas id="chartDrift" role="img" aria-label="Signed error per iteration"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE SWEEP -->
+<div class="page" id="page-sweep">
+  <p class="sec-title">Interval sweep</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:11px;color:var(--text2);">Min interval</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="range" id="swMin" min="1000" max="400000" step="1000" value="10000">
+        <div class="num-wrap">
+          <input type="number" class="num-in" id="nSwMin" value="10000" min="1000" max="400000" step="1000">
+          <span class="time" id="oSwMint">250 µs</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:11px;color:var(--text2);">Max interval</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="range" id="swMax" min="1000" max="400000" step="1000" value="80000">
+        <div class="num-wrap">
+          <input type="number" class="num-in" id="nSwMax" value="80000" min="1000" max="400000" step="1000">
+          <span class="time" id="oSwMaxt">2 ms</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:11px;color:var(--text2);">Steps</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="range" id="swSteps" min="10" max="1000" step="10" value="100">
+        <input type="number" class="num-in" id="nSwSteps" value="100" min="10" max="1000" step="10" style="width:54px;">
+      </div>
+    </div>
+  </div>
+  <div id="sweepStatus"></div>
+  <div style="display:flex;gap:14px;font-size:10px;color:var(--text2);margin-bottom:4px;flex-wrap:wrap;">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:var(--blue);"></span>Abs. mean</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:var(--red);"></span>Max</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:var(--amber);"></span>95th pct</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:var(--green);"></span>% forwarded</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:var(--text3);"></span>% skipped</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:var(--purple);"></span>% no-sleep</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;opacity:.4;border-top:2px dashed rgba(255,255,255,.5);"></span>I = T</span>
+  </div>
+  <p class="zoom-hint">Scroll to zoom · Drag to pan</p>
+  <div style="position:relative;width:100%;height:320px;">
+    <canvas id="chartSweep" role="img" aria-label="Error metrics vs interval"></canvas>
+  </div>
+  <p style="font-size:10px;color:var(--text3);margin-top:4px;">Left axis: cycles &nbsp;|&nbsp; Right axis: %</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
+<script>
+const CPU_FREQ = 40e6;
+
+function cyclesToTime(cycles) {
+  if(cycles===0) return '0 µs';
+  const secs=cycles/CPU_FREQ;
+  if(secs>=1)    return secs.toFixed(2)+' s';
+  if(secs>=1e-3) return (secs*1e3).toPrecision(3).replace(/\.?0+$/,'')+' ms';
+  if(secs>=1e-6) return (secs*1e6).toPrecision(3).replace(/\.?0+$/,'')+' µs';
+  return (secs*1e9).toPrecision(3).replace(/\.?0+$/,'')+' ns';
+}
+
+const C_TEXT2='#a8a69e',C_GRID='rgba(60,60,58,0.5)',C_BLUE='#378ADD',C_RED='#E24B4A',
+      C_AMBER='#EF9F27',C_GREEN='#1D9E75',C_PURPLE='#9F77DD',C_GRAY='#6e6c66';
+const fmt=n=>Math.abs(n)>=1000?Math.round(n).toLocaleString('fr-BE'):Math.round(n).toString();
+
+// ─── Noise config per mode ────────────────────────────────────────────────────
+// abs: amplitude in cycles, max 500000 (~12.5 ms at 40 MHz), step 1000
+// rel: amplitude in % of T (tick duration), 0–200 %, step 1
+const NOISE_CFG = {
+  abs: { min:0, max:500000, step:1000, unitLabel: label => `± ${cyclesToTime(label)}` },
+  rel: { min:0, max:200,    step:1,    unitLabel: label => `± ${label}% T`            }
+};
+
+// ── Worker ────────────────────────────────────────────────────────────────────
+const workerCode=`
+function roundTicks(v,T,mode){
+  if(mode==='ceil')  return Math.ceil(v/T);
+  if(mode==='floor') return Math.floor(v/T);
+  return Math.round(v/T);
+}
+
+// Box-Muller transform for normal distribution
+function randNormal(){
+  let u,v;
+  do{ u=Math.random(); v=Math.random(); }while(u===0);
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+// noise: { enabled, amplitude, mode:'abs'|'rel', dist:'uniform'|'normal' }
+//
+// abs mode: amplitude is a number of cycles. The jitter is drawn in cycles,
+//   then converted to a tick offset by dividing by T.
+//   uniform: U(-amp, +amp) cycles
+//   normal:  N(0, amp/3) cycles  (3-sigma ≈ amp, i.e. amp is the "max" at ~99.7%)
+//
+// rel mode: amplitude is a percentage of T (tick duration).
+//   amp_cycles = T * amplitude / 100
+//   Then same conversion to tick offset as abs mode.
+//   This is well-defined regardless of sleep_wanted (no divide-by-zero risk).
+//
+function getNoise(T, ticks, noise){
+  if(!noise.enabled || noise.amplitude===0 || T===0) return ticks;
+
+  // Compute amplitude in cycles
+  let amp_cycles;
+  if(noise.mode==='abs'){
+    amp_cycles = noise.amplitude; // already in cycles
+  } else {
+    // rel: amplitude% of T
+    amp_cycles = T * noise.amplitude / 100;
+  }
+
+  // Draw jitter in cycles
+  let jitter_cycles;
+  if(noise.dist==='normal'){
+    // sigma = amp_cycles/3 so 3-sigma ≈ amp_cycles
+    jitter_cycles = randNormal() * (amp_cycles / 3);
+  } else {
+    // uniform [-amp_cycles, +amp_cycles]
+    jitter_cycles = (Math.random()*2 - 1) * amp_cycles;
+  }
+  return Math.abs(jitter_cycles);
+}
+
+function simulate(I,X,T,N,mode,skipPast,noise,buildPreview){
+  const errors=new Float64Array(N),fwd=new Uint8Array(N),skippedA=new Uint8Array(N),
+        pastA=new Uint8Array(N),zeroSleepA=new Uint8Array(N);
+  const preview=buildPreview?[]:null;
+  let clock=0,iterIndex=0,filled=0,skipCount=0,pastCount=0,zeroSleepCount=0;
+  while(filled<N){
+    const expected_start=iterIndex*I, next_deadline=(iterIndex+1)*I;
+    const isPast=clock+X>next_deadline;
+    if(isPast&&skipPast){
+      if(preview)preview.push({expected_start,skipped:true,pastSchedule:true,
+        actual_start:null,end_time:null,error:null,forwarded:false,zeroSleep:false});
+      skippedA[filled]=1;errors[filled]=0;fwd[filled]=0;pastA[filled]=1;zeroSleepA[filled]=0;
+      skipCount++;filled++;iterIndex++;
+      if(iterIndex>N*20)break;
+      continue;
+    }
+    if(isPast){pastCount++;pastA[filled]=1;}
+    const actual_start=clock, end_time=clock+X, sleep_wanted=next_deadline-end_time;
+    const ticks=Math.max(0, roundTicks(sleep_wanted,T,mode));
+    const isZeroSleep=ticks===0;
+    if(isZeroSleep){
+      clock=end_time+ticks*T;
+      zeroSleepCount++;
+      zeroSleepA[filled]=1;
+    } else {
+      clock=end_time+ticks*T + getNoise(T, ticks, noise);
+    }
+    const error=actual_start-expected_start;
+    errors[filled]=error; fwd[filled]=error<0?1:0;
+    if(preview)preview.push({expected_start,actual_start,end_time,error,
+      forwarded:error<0,pastSchedule:isPast,skipped:false,zeroSleep:isZeroSleep});
+    filled++;iterIndex++;
+  }
+  return{errors,fwd,skippedA,pastA,zeroSleepA,skipCount,pastCount,zeroSleepCount,preview};
+}
+
+function computeStats(errors,fwd,skippedA,zeroSleepA,N){
+  let sumAbs=0,maxAbs=0,fwdCount=0,zeroSleepCount=0,skipCount=0;
+  const absArr=new Float64Array(N);
+  for(let i=0;i<N;i++){
+    if(skippedA[i]){skipCount++;continue;}
+    const a=Math.abs(errors[i]);
+    absArr[i]=a; sumAbs+=a; if(a>maxAbs)maxAbs=a;
+    if(fwd[i])fwdCount++;
+    if(zeroSleepA[i])zeroSleepCount++;
+  }
+  const execCount=N-skipCount;
+  const mean=execCount>0?sumAbs/execCount:0;
+  const sorted=[];
+  for(let i=0;i<N;i++){if(!skippedA[i])sorted.push(absArr[i]);}
+  sorted.sort((a,b)=>a-b);
+  const p95=sorted.length>0?sorted[Math.floor(sorted.length*0.95)]||0:0;
+  const fwdPct=execCount>0?fwdCount/execCount*100:0;
+  const zeroSleepPct=execCount>0?zeroSleepCount/execCount*100:0;
+  const skipPct=N>0?skipCount/N*100:0;
+  return{mean,maxAbs,p95,fwdPct,zeroSleepPct,skipPct,execCount,skipCount};
+}
+
+function buildHistogram(errors,skippedA,p95,nbins,N){
+  const vals=[];
+  for(let i=0;i<N;i++){if(!skippedA[i])vals.push(Math.abs(errors[i]));}
+  if(vals.length===0)return{labels:[0],bins:[0],p95:0};
+  const mn=Math.min(...vals),mx=Math.max(...vals);
+  const binW=(mx-mn)/nbins||1;
+  const bins=new Array(nbins).fill(0),labels=[];
+  for(let b=0;b<nbins;b++)labels.push(Math.round(mn+b*binW));
+  vals.forEach(e=>{let b=Math.floor((e-mn)/binW);if(b>=nbins)b=nbins-1;bins[b]++;});
+  return{labels,bins,p95};
+}
+
+self.onmessage=function(e){
+  const{type,params,id}=e.data;
+  if(type==='simFull'){
+    const{I,X,T,mode,skipPast,noise}=params;
+    const res=simulate(I,X,T,10000,mode,skipPast,noise,false);
+    const{errors,fwd,skippedA,zeroSleepA}=res;
+    const st=computeStats(errors,fwd,skippedA,zeroSleepA,10000);
+    const hist=buildHistogram(errors,skippedA,st.p95,20,10000);
+    const sig200=[];
+    for(let i=0;i<10000&&sig200.length<200;i++){if(!skippedA[i])sig200.push(errors[i]);}
+    self.postMessage({type:'simFull',id,result:{...st,hist,sig200}});
+  }
+  if(type==='simPreview'){
+    const{I,X,T,N,mode,skipPast,noise}=params;
+    const res=simulate(I,X,T,N,mode,skipPast,noise,true);
+    const st=computeStats(res.errors,res.fwd,res.skippedA,res.zeroSleepA,N);
+    self.postMessage({type:'simPreview',id,result:{preview:res.preview,
+      skipCount:res.skipCount,pastCount:res.pastCount,zeroSleepCount:res.zeroSleepCount,...st}});
+  }
+  if(type==='sweep'){
+    const{X,T,mode,skipPast,noise,swMin,swMax,steps}=params;
+    const step=(swMax-swMin)/Math.max(1,steps-1);
+    const labels=[],dMean=[],dMax=[],dP95=[],dFwd=[],dSkip=[],dZeroSleep=[];
+    for(let s=0;s<steps;s++){
+      const I=Math.round(swMin+s*step); labels.push(I);
+      const res=simulate(I,X,T,10000,mode,skipPast,noise,false);
+      const st=computeStats(res.errors,res.fwd,res.skippedA,res.zeroSleepA,10000);
+      dMean.push(Math.round(st.mean)); dMax.push(st.maxAbs); dP95.push(Math.round(st.p95));
+      dFwd.push(+st.fwdPct.toFixed(2));
+      dSkip.push(+st.skipPct.toFixed(2));
+      dZeroSleep.push(+st.zeroSleepPct.toFixed(2));
+    }
+    self.postMessage({type:'sweepDone',id,result:{labels,dMean,dMax,dP95,dFwd,dSkip,dZeroSleep}});
+  }
+};
+`;
+const worker=new Worker(URL.createObjectURL(new Blob([workerCode],{type:'application/javascript'})));
+
+let roundMode='nearest', noiseMode='abs', noiseDist='uniform';
+let chartDist=null,chartDrift=null,chartSweep=null;
+let pendingSim=null,pendingSweep=null,reqId=0;
+const activePage=()=>document.querySelector('.tab-btn.active').dataset.page;
+
+worker.onmessage=function(e){
+  const{type,id,result}=e.data;
+  if(type==='simFull'   &&id===pendingSim)   applySimFull(result);
+  if(type==='simPreview'&&id===pendingSim)   applyPreview(result);
+  if(type==='sweepDone' &&id===pendingSweep) applySweepDone(result);
+};
+
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+const pv=id=>+document.getElementById(id).value;
+
+function noiseParams(){
+  return{
+    enabled: document.getElementById('tNoise').checked,
+    amplitude: pv('sNoise'),
+    mode: noiseMode,
+    dist: noiseDist
+  };
+}
+function sharedParams(){
+  return{X:pv('sX'),T:pv('sT'),mode:roundMode,skipPast:document.getElementById('tSkip').checked,noise:noiseParams()};
+}
+
+function triggerSim(){
+  const id=++reqId; pendingSim=id;
+  const sp=sharedParams(),I=pv('sI'),N=pv('sN');
+  worker.postMessage({type:'simPreview',id,params:{...sp,I,N}});
+  worker.postMessage({type:'simFull',   id,params:{...sp,I}});
+}
+function triggerSweep(){
+  if(activePage()!=='sweep')return;
+  const id=++reqId; pendingSweep=id;
+  document.getElementById('sweepStatus').textContent='Computing…';
+  const sp=sharedParams();
+  const swMin=pv('swMin'),swMax=pv('swMax');
+  if(swMax<=swMin){document.getElementById('sweepStatus').textContent='Max must be > Min';return;}
+  worker.postMessage({type:'sweep',id,params:{...sp,swMin,swMax,steps:pv('swSteps')}});
+}
+const debouncedSim=debounce(triggerSim,120), debouncedSweep=debounce(triggerSweep,200);
+function triggerBoth(){debouncedSim();debouncedSweep();}
+
+function applyPreview({preview}){drawTimeline(preview,pv('sI'),pv('sX'));}
+
+function applySimFull(r){
+  document.getElementById('stMean').textContent=fmt(r.mean);
+  document.getElementById('stMax').textContent=fmt(r.maxAbs);
+  document.getElementById('stP95').textContent=fmt(r.p95);
+  document.getElementById('stFwd').textContent=r.fwdPct.toFixed(1)+'%';
+  document.getElementById('stZeroSleep').textContent=r.zeroSleepPct.toFixed(1)+'%';
+  document.getElementById('stSkip').textContent=r.skipPct.toFixed(1)+'%';
+
+  const wp=document.getElementById('warnPast');
+  if(r.skipCount>0||r.execCount<10000){
+    const aff=r.skipCount,pct=r.skipPct.toFixed(2);
+    const msg=document.getElementById('tSkip').checked
+      ?`${aff.toLocaleString()} iters (${pct}% of total) skipped — task end overshoots next deadline.`
+      :`${aff.toLocaleString()} iters (${pct}% of total) need scheduling in the past. Enable skip or increase I / decrease X.`;
+    document.getElementById('warnPastTxt').textContent=msg;
+    wp.style.display='block';
+  }else wp.style.display='none';
+
+  const wz=document.getElementById('warnZeroSleep');
+  const zeroCount=Math.round(r.zeroSleepPct/100*r.execCount);
+  if(zeroCount>0){
+    document.getElementById('warnZeroSleepTxt').textContent=
+      `${zeroCount.toLocaleString()} iters (${r.zeroSleepPct.toFixed(2)}% of executed) with no sleep — ticks = 0.`;
+    wz.style.display='block';
+  }else wz.style.display='none';
+
+  const{labels:hL,bins:hB,p95}=r.hist;
+  if(chartDist)chartDist.destroy();
+  chartDist=new Chart(document.getElementById('chartDist'),{
+    type:'bar',
+    data:{labels:hL.map(fmt),datasets:[{label:'Count',data:hB,
+      backgroundColor:hL.map(l=>l<=p95?C_BLUE+'99':C_RED+'99'),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:i=>i[0].label+' cyc',label:i=>'count: '+i.raw}}},
+      scales:{x:{ticks:{maxTicksLimit:5,font:{size:9},color:C_TEXT2,autoSkip:true},grid:{display:false}},
+              y:{ticks:{font:{size:9},color:C_TEXT2},grid:{color:C_GRID}}}}
+  });
+  if(chartDrift)chartDrift.destroy();
+  chartDrift=new Chart(document.getElementById('chartDrift'),{
+    type:'bar',
+    data:{labels:r.sig200.map((_,i)=>i+1),datasets:[{label:'Signed error',data:r.sig200,
+      backgroundColor:r.sig200.map(e=>e<0?C_AMBER+'99':C_RED+'99'),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:i=>'iter '+i[0].label,label:i=>fmt(i.raw)+' cyc'}}},
+      scales:{x:{ticks:{maxTicksLimit:6,font:{size:9},color:C_TEXT2,autoSkip:true},grid:{display:false}},
+              y:{ticks:{font:{size:9},color:C_TEXT2},grid:{color:C_GRID}}}}
+  });
+}
+
+// ── Vertical line plugin ──────────────────────────────────────────────────────
+const verticalLinePlugin={
+  id:'verticalLine',
+  afterDraw(chart,args,opts){
+    if(opts.xIndex==null||opts.xIndex<0)return;
+    const{ctx,chartArea,scales}=chart;
+    const x=scales.x.getPixelForValue(opts.xIndex);
+    if(x<chartArea.left||x>chartArea.right)return;
+    ctx.save();
+    ctx.strokeStyle=opts.color||'rgba(255,255,255,0.4)';
+    ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(x,chartArea.top); ctx.lineTo(x,chartArea.bottom); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle=opts.color||'rgba(255,255,255,0.4)';
+    ctx.font='10px system-ui,sans-serif';
+    ctx.textAlign=x>chartArea.left+60?'right':'left';
+    ctx.fillText('I = T',(ctx.textAlign==='right'?x-4:x+4),chartArea.top+12);
+    ctx.restore();
+  }
+};
+Chart.register(verticalLinePlugin);
+
+function findTickLineIndex(labels,T){
+  let best=-1,bestDist=Infinity;
+  labels.forEach((v,i)=>{const d=Math.abs(v-T);if(d<bestDist){bestDist=d;best=i;}});
+  return best;
+}
+
+function applySweepDone({labels,dMean,dMax,dP95,dFwd,dSkip,dZeroSleep}){
+  document.getElementById('sweepStatus').textContent='';
+  const T=pv('sT');
+  const tickLineIdx=findTickLineIndex(labels,T);
+  const fmtL=v=>v>=1000?Math.round(v/1000)+'k':String(v);
+  if(chartSweep)chartSweep.destroy();
+  chartSweep=new Chart(document.getElementById('chartSweep'),{
+    type:'line',
+    data:{labels:labels.map(fmtL),datasets:[
+      {label:'Abs. mean',   data:dMean,      borderColor:C_BLUE,  borderWidth:2,pointRadius:0,fill:false,yAxisID:'yCyc',tension:0.3},
+      {label:'Max',         data:dMax,       borderColor:C_RED,   borderWidth:2,pointRadius:0,fill:false,yAxisID:'yCyc',tension:0.3},
+      {label:'95th pct',    data:dP95,       borderColor:C_AMBER, borderWidth:2,pointRadius:0,fill:false,yAxisID:'yCyc',tension:0.3,borderDash:[5,3]},
+      {label:'% forwarded', data:dFwd,       borderColor:C_GREEN, borderWidth:2,pointRadius:0,fill:false,yAxisID:'yPct',tension:0.3},
+      {label:'% skipped',   data:dSkip,      borderColor:C_GRAY,  borderWidth:2,pointRadius:0,fill:false,yAxisID:'yPct',tension:0.3,borderDash:[4,3]},
+      {label:'% no-sleep',  data:dZeroSleep, borderColor:C_PURPLE,borderWidth:2,pointRadius:0,fill:false,yAxisID:'yPct',tension:0.3,borderDash:[2,3]},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:i=>'I = '+labels[i[0].dataIndex].toLocaleString('fr-BE')+' cyc',
+          label:i=>i.dataset.label+': '+i.formattedValue+(i.datasetIndex<3?' cyc':'%')
+        }},
+        verticalLine:{xIndex:tickLineIdx,color:'rgba(255,255,255,0.4)'},
+        zoom:{
+          zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},
+          pan:{enabled:true,mode:'x'},
+          limits:{x:{minRange:2}}
+        }
+      },
+      scales:{
+        x:{ticks:{maxTicksLimit:10,font:{size:10},color:C_TEXT2,autoSkip:true},grid:{color:C_GRID},
+           title:{display:true,text:'Interval I (cycles)',font:{size:10},color:C_TEXT2}},
+        yCyc:{type:'linear',position:'left',ticks:{font:{size:10},color:C_TEXT2},grid:{color:C_GRID},
+              title:{display:true,text:'cycles',font:{size:10},color:C_TEXT2}},
+        yPct:{type:'linear',position:'right',min:0,ticks:{font:{size:10},color:C_TEXT2,callback:v=>v+'%'},grid:{display:false},
+              title:{display:true,text:'%',font:{size:10},color:C_TEXT2}}
+      }
+    }
+  });
+}
+
+// ── Timeline ──────────────────────────────────────────────────────────────────
+function drawTimeline(iters,I,X){
+  const svg=document.getElementById('timeline');
+  const W=svg.getBoundingClientRect().width||600;
+  const rowH=20,pad=4,labelW=24;
+  const H=iters.length*rowH+pad*2;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('height',H);
+  const N_iters=iters.length;
+  const expectedEnd=N_iters*I;
+  const exec=iters.filter(d=>!d.skipped);
+  const actualEnd=exec.length>0?exec[exec.length-1].end_time:0;
+  const totalTime=Math.max(expectedEnd,actualEnd)*1.03+I*0.05;
+  const scale=(W-labelW-40)/totalTime;
+
+  let html=`<defs>
+    <pattern id="pat-late-nosleep" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#E24B4A" opacity="0.9"/>
+      <polygon points="10,0 10,10 0,10" fill="#1D9E75" opacity="0.9"/>
+    </pattern>
+  </defs>`;
+
+  iters.forEach((d,i)=>{
+    const cy=pad+i*rowH+rowH/2;
+    if(d.skipped){
+      html+=`<text x="${labelW-4}" y="${cy+4}" text-anchor="end" font-size="10" fill="#6e6c66">${i+1}</text>`;
+      const ex=labelW+d.expected_start*scale,sw=Math.max(3,X*scale);
+      html+=`<rect x="${ex}" y="${cy-5}" width="${sw}" height="10" rx="2" fill="#6e6c66" opacity="0.2"/>`;
+      html+=`<text x="${ex+sw+3}" y="${cy+4}" font-size="9" fill="#6e6c66">skip</text>`;
+      return;
+    }
+    html+=`<text x="${labelW-4}" y="${cy+4}" text-anchor="end" font-size="10" fill="${d.pastSchedule?'#E24B4A':'#6e6c66'}">${i+1}</text>`;
+    const expectedX=labelW+d.expected_start*scale;
+    html+=`<line x1="${expectedX}" x2="${expectedX}" y1="${cy-9}" y2="${cy+9}" stroke="#6e6c66" stroke-width="1.2" stroke-dasharray="3,2"/>`;
+    const ax=labelW+d.actual_start*scale,tw=Math.max(2,X*scale);
+    let barFill;
+    if(d.pastSchedule&&d.zeroSleep)  barFill='url(#pat-late-nosleep)';
+    else if(d.pastSchedule)          barFill='#E24B4A';
+    else if(d.zeroSleep)             barFill='#1D9E75';
+    else                             barFill='#378ADD';
+    html+=`<rect x="${ax}" y="${cy-5}" width="${tw}" height="10" rx="2" fill="${barFill}"/>`;
+    if(d.error!==0){
+      const x1=Math.min(expectedX,ax),x2=Math.max(expectedX,ax);
+      const col=d.error>0?'#E24B4A':'#EF9F27';
+      html+=`<rect x="${x1}" y="${cy-2}" width="${Math.max(1,x2-x1)}" height="4" rx="1" fill="${col}" opacity="0.8"/>`;
+    }
+    const ae=Math.abs(Math.round(d.error));
+    const et=ae===0?'0':(d.error>0?'+':'−')+(ae>=1000?Math.round(ae/1000)+'k':ae);
+    const flags=d.zeroSleep?' 0t':'';
+    html+=`<text x="${ax+tw+3}" y="${cy+4}" font-size="9" fill="#a8a69e">${et}${flags}</text>`;
+  });
+  svg.innerHTML=html;
+}
+
+// ── Noise slider reconfiguration ──────────────────────────────────────────────
+// When mode switches abs↔rel, update the slider/input range + value + pill text.
+// We keep the noise "off" (amplitude=0) after a mode switch to avoid confusion.
+function reconfigNoiseSlider(newMode) {
+  const cfg = NOISE_CFG[newMode];
+  const slider = document.getElementById('sNoise');
+  const numIn  = document.getElementById('nNoise');
+  // Reset amplitude to 0 on mode change
+  slider.min=cfg.min; slider.max=cfg.max; slider.step=cfg.step; slider.value=0;
+  numIn.min=cfg.min;  numIn.max=cfg.max;  numIn.step=cfg.step;  numIn.value=0;
+  updateNoisePill(0);
+}
+
+function updateNoisePill(amp) {
+  const pill = document.getElementById('noisePill');
+  const cfg  = NOISE_CFG[noiseMode];
+  pill.textContent = cfg.unitLabel(amp);
+}
+
+// ── Linked slider + number input helper ──────────────────────────────────────
+function linkSliderNum({sliderId, numId, min, max, step, timeId, onChange}){
+  const slider=document.getElementById(sliderId);
+  const numIn =document.getElementById(numId);
+
+  function clamp(v){return Math.min(max,Math.max(min,Math.round(v/step)*step));}
+
+  function update(v){
+    v=clamp(v);
+    slider.value=v; numIn.value=v; numIn.classList.remove('invalid');
+    if(timeId) document.getElementById(timeId).textContent=cyclesToTime(v);
+    if(onChange) onChange(v);
+  }
+
+  slider.addEventListener('input', ()=>update(+slider.value));
+  numIn.addEventListener('input',  ()=>{
+    const v=+numIn.value;
+    if(isNaN(v)||v<min||v>max){ numIn.classList.add('invalid'); return; }
+    update(v);
+  });
+  numIn.addEventListener('change', ()=>update(clamp(+numIn.value||min)));
+  numIn.addEventListener('blur',   ()=>update(clamp(+numIn.value||min)));
+  update(+slider.value); // init
+}
+
+// Special version for noise: no timeId (pill handled separately), reads dynamic min/max/step
+function linkNoiseSlider(){
+  const slider=document.getElementById('sNoise');
+  const numIn =document.getElementById('nNoise');
+
+  function getCfg(){ return NOISE_CFG[noiseMode]; }
+  function clamp(v){ const c=getCfg(); return Math.min(c.max,Math.max(c.min,Math.round(v/c.step)*c.step)); }
+
+  function update(v){
+    v=clamp(v);
+    slider.value=v; numIn.value=v; numIn.classList.remove('invalid');
+    updateNoisePill(v);
+    triggerBoth();
+  }
+
+  slider.addEventListener('input', ()=>update(+slider.value));
+  numIn.addEventListener('input',  ()=>{
+    const c=getCfg(), v=+numIn.value;
+    if(isNaN(v)||v<c.min||v>c.max){ numIn.classList.add('invalid'); return; }
+    update(v);
+  });
+  numIn.addEventListener('change', ()=>update(clamp(+numIn.value||0)));
+  numIn.addEventListener('blur',   ()=>update(clamp(+numIn.value||0)));
+}
+
+// ── Init controls ─────────────────────────────────────────────────────────────
+linkSliderNum({sliderId:'sX',numId:'nX',min:0,max:10000,step:100,timeId:'oXt',onChange:triggerBoth});
+linkSliderNum({sliderId:'sT',numId:'nT',min:1000,max:200000,step:1000,timeId:'oTt',onChange:triggerBoth});
+linkSliderNum({sliderId:'sI',numId:'nI',min:1000,max:200000,step:1000,timeId:'oIt',onChange:debouncedSim});
+linkSliderNum({sliderId:'sN',numId:'nN',min:4,max:100,step:1,onChange:debouncedSim});
+
+linkNoiseSlider();
+
+linkSliderNum({sliderId:'swMin',numId:'nSwMin',min:1000,max:400000,step:1000,timeId:'oSwMint',onChange:(v)=>{
+  const mx=pv('swMax');
+  if(v>=mx){
+    const nMax=v+1000;
+    ['swMax','nSwMax'].forEach(id=>document.getElementById(id).value=nMax);
+    document.getElementById('oSwMaxt').textContent=cyclesToTime(nMax);
+  }
+  if(chartSweep){chartSweep.destroy();chartSweep=null;}
+  debouncedSweep();
+}});
+
+linkSliderNum({sliderId:'swMax',numId:'nSwMax',min:1000,max:400000,step:1000,timeId:'oSwMaxt',onChange:(v)=>{
+  const mn=pv('swMin');
+  if(v<=mn){
+    const nMin=Math.max(1000,v-1000);
+    ['swMin','nSwMin'].forEach(id=>document.getElementById(id).value=nMin);
+    document.getElementById('oSwMint').textContent=cyclesToTime(nMin);
+  }
+  if(chartSweep){chartSweep.destroy();chartSweep=null;}
+  debouncedSweep();
+}});
+
+linkSliderNum({sliderId:'swSteps',numId:'nSwSteps',min:10,max:1000,step:10,onChange:()=>{
+  if(chartSweep){chartSweep.destroy();chartSweep=null;}
+  debouncedSweep();
+}});
+
+// ── Other controls ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+    if(btn.dataset.page==='sweep'){if(chartSweep){chartSweep.destroy();chartSweep=null;}triggerSweep();}
+  });
+});
+
+document.getElementById('rmodeGroup').addEventListener('click',e=>{
+  const btn=e.target.closest('button'); if(!btn)return;
+  document.querySelectorAll('.rmode button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); roundMode=btn.dataset.mode; triggerBoth();
+});
+
+document.getElementById('tSkip').addEventListener('change',e=>{
+  document.getElementById('skipDesc').textContent='skip: '+(e.target.checked?'on':'off'); triggerBoth();
+});
+
+document.getElementById('tNoise').addEventListener('change',()=>triggerBoth());
+
+document.getElementById('noiseModeGroup').addEventListener('click',e=>{
+  const btn=e.target.closest('button'); if(!btn)return;
+  document.querySelectorAll('#noiseModeGroup button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  noiseMode=btn.dataset.nmode;
+  reconfigNoiseSlider(noiseMode);
+  triggerBoth();
+});
+
+document.getElementById('noiseDistGroup').addEventListener('click',e=>{
+  const btn=e.target.closest('button'); if(!btn)return;
+  document.querySelectorAll('#noiseDistGroup button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  noiseDist=btn.dataset.dist; triggerBoth();
+});
+
+// ── Initial render ─────────────────────────────────────────────────────────────
+updateNoisePill(0);
+triggerSim();
+</script>
+</body>
+</html>

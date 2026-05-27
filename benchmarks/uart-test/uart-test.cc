@@ -33,7 +33,7 @@ int __cheri_compartment("uart-test") entry_waiter()
 	printf("TESTING UART DURATION\n");
 	printf("\n");
 
-	const char *text = "testtesttesttest";
+	const char *text = "testtesttesttesttesttesttesttest";
 
 	for (uint32_t i = 0; i < MAX_ITERATION; i++)
 	{

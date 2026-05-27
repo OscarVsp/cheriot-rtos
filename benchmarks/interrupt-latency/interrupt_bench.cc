@@ -53,7 +53,7 @@ int __cheri_compartment("interrupt_bench") entry_high_priority()
             Debug::log("Thread {} waiting on event", threadID);
             event.wait(0);
             int time = rdcycle();
-            Debug::Invariant(event == 1, "Futex woke spuriously");
+            Debug::Invariant(event == 1, "Futex woke spuriously on thread {}", threadID);
             return time;
 		         });
 		size_t stackSize = get_stack_size();
