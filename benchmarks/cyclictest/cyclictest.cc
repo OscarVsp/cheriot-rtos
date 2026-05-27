@@ -92,38 +92,48 @@ int __cheri_compartment("cyclictest") entry_waiter()
 	wait_stressors_ready();
 #endif
 
-	uint32_t actualCycles, absJitter;
+	uint32_t nowCycles, nextWakeCycle, remainingCycles, remainingTicks, actualCycles, absJitter;
+	uint32_t nextWakeCycle 				= 0;
 	int32_t  jitter;
-	uint32_t  minAbsJitter           = UINT32_MAX;
-	uint32_t  maxAbsJitter           = 0;
-	uint64_t  sumAbsJitter           = 0;
-	uint32_t frameSkippedForCatchup = 0;
+	uint32_t  minAbsJitter           	= UINT32_MAX;
+	uint32_t  maxAbsJitter           	= 0;
+	uint64_t  sumAbsJitter           	= 0;
+	uint32_t frameSkippedForCatchup 	= 0;
 
-	uint32_t nowCycles = readCycles();
-
-	uint32_t nextWakeCycle = nowCycles + IntervalCycles;
-
-	uint32_t remainingCycles =
-		  (nowCycles < nextWakeCycle) ? (nextWakeCycle - nowCycles) : 0;
-
-#if SLEEP_TICKS_MODE == NEAREST_TICK
-	uint32_t remainingTicks =
-		  (remainingCycles + TIMERCYCLES_PER_TICK / 2) / TIMERCYCLES_PER_TICK;
-#elif SLEEP_TICKS_MODE == UPPER_TICK
-	uint32_t remainingTicks =
-		  (remainingCycles + TIMERCYCLES_PER_TICK - 1) / TIMERCYCLES_PER_TICK;
-#elif SLEEP_TICKS_MODE == LOWER_TICK
-	uint32_t remainingTicks = remainingCycles / TIMERCYCLES_PER_TICK;
-#endif
 
 	for (uint32_t i = 0; i < MAX_ITERATION; i++)
 	{
+		CHERI::with_interrupts_disabled([&]() {
+
+			nextWakeCycle += IntervalCycles;
+
+			//Skip next frame if it is already in the past
+			while (nextWakeCycle <= readCycles())
+			{
+				nextWakeCycle += IntervalCycles;
+				frameSkippedForCatchup++;
+			}
+			/*Compute the remaining ticks to sleep*/
+			nowCycles = readCycles();
+
+			remainingCycles =
+			(nowCycles < nextWakeCycle) ? (nextWakeCycle - nowCycles) : 0;
+
+#if SLEEP_TICKS_MODE == NEAREST_TICK
+			remainingTicks =
+			(remainingCycles + TIMERCYCLES_PER_TICK / 2) / TIMERCYCLES_PER_TICK;
+#elif SLEEP_TICKS_MODE == UPPER_TICK
+			remainingTicks =
+			(remainingCycles + TIMERCYCLES_PER_TICK - 1) / TIMERCYCLES_PER_TICK;
+#elif SLEEP_TICKS_MODE == LOWER_TICK
+			remainingTicks = remainingCycles / TIMERCYCLES_PER_TICK;
+#endif
 		
+			Timeout sleepTime{0, remainingTicks};
+			thread_sleep(&sleepTime, ThreadSleepNoEarlyWake);
 
-		Timeout sleepTime{0, remainingTicks};
-		thread_sleep(&sleepTime, ThreadSleepNoEarlyWake);
-
-		actualCycles = readCycles();
+			actualCycles = readCycles();
+		});
 
 		jitter    = static_cast<int32_t>(static_cast<int64_t>(actualCycles) -
 		                                 static_cast<int64_t>(nextWakeCycle));
@@ -155,30 +165,6 @@ int __cheri_compartment("cyclictest") entry_waiter()
 		printf("%d:%d\n", static_cast<int>(i), static_cast<int>(jitter));
 #	endif
 
-#endif
-		nextWakeCycle += IntervalCycles;
-
-		//Skip next frame if it is already in the past
-		while (nextWakeCycle <= readCycles())
-		{
-			nextWakeCycle += IntervalCycles;
-			frameSkippedForCatchup++;
-		}
-
-		/*Compute the remaining ticks to sleep*/
-		nowCycles = readCycles();
-
-		remainingCycles =
-		  (nowCycles < nextWakeCycle) ? (nextWakeCycle - nowCycles) : 0;
-
-#if SLEEP_TICKS_MODE == NEAREST_TICK
-		remainingTicks =
-		  (remainingCycles + TIMERCYCLES_PER_TICK / 2) / TIMERCYCLES_PER_TICK;
-#elif SLEEP_TICKS_MODE == UPPER_TICK
-		remainingTicks =
-		  (remainingCycles + TIMERCYCLES_PER_TICK - 1) / TIMERCYCLES_PER_TICK;
-#elif SLEEP_TICKS_MODE == LOWER_TICK
-		remainingTicks = remainingCycles / TIMERCYCLES_PER_TICK;
 #endif
 	}
 
